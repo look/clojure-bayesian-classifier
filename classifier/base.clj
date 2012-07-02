@@ -22,24 +22,20 @@
     (get feature-map category 0)))
 
 (defn inc-feature [feature category]
-  (dosync
-   (let [fcount (get @*feature-counts* feature)]
-     (ref-set *feature-counts*
-              (assoc @*feature-counts*
-                     feature
-                     (if (nil? fcount)
-                       {category 1}
-                       (assoc fcount category (inc (feature-count feature category)))))))))
+  (let [fcount (get @*feature-counts* feature)]
+    (assoc @*feature-counts*
+           feature
+           (if (nil? fcount)
+             {category 1}
+             (assoc fcount category (inc (feature-count feature category)))))))
 
 (defn category-count [category]
   (get @*classification-counts* category 0))
 
 (defn inc-category [category]
-  (dosync
-   (ref-set *classification-counts*
-            (assoc @*classification-counts*
-                   category
-                   (inc (category-count category))))))
+  (assoc @*classification-counts*
+         category
+         (inc (category-count category))))
 
 (defn total-count []
   (apply + (vals @*classification-counts*)))
@@ -48,9 +44,10 @@
   (keys @*classification-counts*))
 
 (defn train [item category]
-    (dorun
-     (map #(inc-feature % category) (get-words item)))
-    (inc-category category))
+  (dosync
+   (dorun
+    (map #(ref-set *feature-counts* (inc-feature % category)) (get-words item)))
+   (ref-set *classification-counts* (inc-category category))))
 
 (defn feature-probability [feature category]
   (if (== (category-count category) 0)
